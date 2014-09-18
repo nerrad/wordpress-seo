@@ -1163,7 +1163,6 @@ if ( ! class_exists( 'WPSEO_Frontend' ) ) {
 				} elseif ( is_archive() ) {
 					$metadesc = $this->meta_desc_from_template( 'metadesc-archive-wpseo' );
 				}
-
 			}
 
 			return $metadesc;
