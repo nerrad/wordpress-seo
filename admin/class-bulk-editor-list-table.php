@@ -132,22 +132,14 @@ if ( ! class_exists( 'WPSEO_Bulk_List_Table' ) ) {
 			}
 
 			$post_ids  = "'" . implode( "', '", $needed_ids ) . "'";
-			$meta_data = $wpdb->get_results(
-				"
-				 	SELECT *
-				 	FROM {$wpdb->postmeta}
-				 	WHERE post_id IN({$post_ids}) && meta_key = '" . WPSEO_Meta::$meta_prefix . $this->meta_type . "'
-				"
-			);
+			$meta_data = $wpdb->get_results( "SELECT * FROM {$wpdb->postmeta} WHERE post_id IN({$post_ids}) && meta_key = '" . WPSEO_Meta::$meta_prefix . $this->meta_type . "'" );
 
 			foreach ( $meta_data AS $row ) {
 				$this->meta_data[ $row->post_id ][ $row->meta_key ] = $row->meta_value;
 			}
 
-			// Little housekeeping
-			unset( $needed_ids, $post_ids, $meta_data );
-
 		}
+
 		/**
 		 * Class constructor
 		 */
@@ -213,7 +205,7 @@ if ( ! class_exists( 'WPSEO_Bulk_List_Table' ) ) {
 			?>
 			<div class="tablenav <?php echo esc_attr( $which ); ?>">
 
-				<?php if ('top' === $which) { ?>
+				<?php if ('top' === $which ) { ?>
 				<form id="posts-filter" action="" method="get">
 					<input type="hidden" name="page" value="wpseo_bulk-editor" />
 					<input type="hidden" name="type" value="<?php echo $this->page_type; ?>" />
