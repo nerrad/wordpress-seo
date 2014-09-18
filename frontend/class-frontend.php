@@ -1084,97 +1084,118 @@ if ( ! class_exists( 'WPSEO_Frontend' ) ) {
 		}
 
 		/**
-		 * Outputs the meta description element or returns the description text.
+		 * Outputs or returns the meta description
 		 *
-		 * @param bool $echo Whether or not to echo the description.
+		 * @param bool $echo
 		 *
-		 * @return string
+		 * @return bool|string
 		 */
 		public function metadesc( $echo = true ) {
-			global $post, $wp_query;
-
-			$metadesc  = '';
-			$post_type = '';
-			$template  = '';
-
-			if ( is_object( $post ) && ( isset( $post->post_type ) && $post->post_type !== '' ) ) {
-				$post_type = $post->post_type;
-			}
-
-			if ( is_singular() ) {
-				$metadesc = WPSEO_Meta::get_value( 'metadesc' );
-				if ( ( $metadesc === '' && $post_type !== '' ) && isset( $this->options[ 'metadesc-' . $post_type ] ) ) {
-					$template = $this->options[ 'metadesc-' . $post_type ];
-					$term     = $post;
-				}
-			} else {
-				if ( is_search() ) {
-					return '';
-				} elseif ( $this->is_home_posts_page() ) {
-					$template = $this->options['metadesc-home-wpseo'];
-					$term     = array();
-				} elseif ( $this->is_posts_page() ) {
-					$metadesc = WPSEO_Meta::get_value( 'metadesc', get_option( 'page_for_posts' ) );
-					if ( ( $metadesc === '' && $post_type !== '' ) && isset( $this->options[ 'metadesc-' . $post_type ] ) ) {
-						$page     = get_post( get_option( 'page_for_posts' ) );
-						$template = $this->options[ 'metadesc-' . $post_type ];
-						$term     = $page;
-					}
-				} elseif ( is_category() || is_tag() || is_tax() ) {
-					$term     = $wp_query->get_queried_object();
-					$metadesc = WPSEO_Taxonomy_Meta::get_term_meta( $term, $term->taxonomy, 'desc' );
-					if ( ( ! is_string( $metadesc ) || $metadesc === '' ) && ( ( is_object( $term ) && isset( $term->taxonomy ) ) && isset( $this->options[ 'metadesc-tax-' . $term->taxonomy ] ) ) ) {
-						$template = $this->options[ 'metadesc-tax-' . $term->taxonomy ];
-					}
-				} elseif ( is_author() ) {
-					$author_id = get_query_var( 'author' );
-					$metadesc  = get_the_author_meta( 'wpseo_metadesc', $author_id );
-					if ( ( ! is_string( $metadesc ) || $metadesc === '' ) && '' !== $this->options[ 'metadesc-author-wpseo' ] ) {
-						$template = $this->options[ 'metadesc-author-wpseo' ];
-					}
-				} elseif ( is_post_type_archive() ) {
-					$post_type = get_query_var( 'post_type' );
-					if ( is_array( $post_type ) ) {
-						$post_type = reset( $post_type );
-					}
-					if ( isset( $this->options[ 'metadesc-ptarchive-' . $post_type ] ) ) {
-						$template = $this->options[ 'metadesc-ptarchive-' . $post_type ];
-					}
-				} elseif ( is_archive() ) {
-					$template = $this->options['metadesc-archive-wpseo'];
-				}
-
-				// If we're on a paginated page, and the template doesn't change for paginated pages, bail.
-				if ( ( ! is_string( $metadesc ) || $metadesc === '' ) && get_query_var( 'paged' ) && get_query_var( 'paged' ) > 1 && $template !== '' ) {
-					if ( strpos( $template, '%%page' ) === false ) {
-						return '';
-					}
-				}
-			}
-
-			if ( ( ! is_string( $metadesc ) || '' === $metadesc ) && '' !== $template ) {
-				if ( ! isset( $term ) ) {
-					$term = $wp_query->get_queried_object();
-				}
-				$metadesc = wpseo_replace_vars( $template, $term );
-			}
+			$meta_desc = $this->generate_metadesc();
 
 			/**
 			 * Filter: 'wpseo_metadesc' - Allow changing the WP SEO meta description sentence.
 			 *
 			 * @api string $metadesc The description sentence.
 			 */
-			$metadesc = apply_filters( 'wpseo_metadesc', trim( $metadesc ) );
+			$meta_desc = apply_filters( 'wpseo_metadesc', trim( $meta_desc ) );
 
 			if ( $echo !== false ) {
-				if ( is_string( $metadesc ) && $metadesc !== '' ) {
-					echo '<meta name="description" content="' . esc_attr( strip_tags( stripslashes( $metadesc ) ) ) . '"/>' . "\n";
+				if ( is_string( $meta_desc ) && $meta_desc !== '' ) {
+					echo '<meta name="description" content="' . esc_attr( strip_tags( stripslashes( $meta_desc ) ) ) . '"/>' . "\n";
 				} elseif ( current_user_can( 'manage_options' ) && is_singular() ) {
 					echo '<!-- ' . __( 'Admin only notice: this page doesn\'t show a meta description because it doesn\'t have one, either write it for this page specifically or go into the SEO -> Titles menu and set up a template.', 'wordpress-seo' ) . ' -->' . "\n";
 				}
+				return false;
 			} else {
-				return $metadesc;
+				return $meta_desc;
 			}
+		}
+
+		/**
+		 * Generates the meta description.
+		 *
+		 * @return string
+		 */
+		public function generate_metadesc() {
+
+			$metadesc  = '';
+
+			if ( is_singular() ) {
+				global $post;
+
+				$post_type = '';
+				if ( is_object( $post ) && ( isset( $post->post_type ) && $post->post_type !== '' ) ) {
+					$post_type = $post->post_type;
+				}
+
+				$metadesc = WPSEO_Meta::get_value( 'metadesc' );
+				if ( ( $metadesc === '' && $post_type !== '' ) && isset( $this->options[ 'metadesc-' . $post_type ] ) ) {
+					$metadesc = $this->meta_desc_from_template( 'metadesc-' . $post_type, $post );
+				}
+			} else {
+				global $wp_query;
+
+				if ( is_search() ) {
+					return '';
+				} elseif ( $this->is_home_posts_page() ) {
+					$metadesc = $this->meta_desc_from_template( 'metadesc-home-wpseo' );
+				} elseif ( $this->is_posts_page() ) {
+					$metadesc = WPSEO_Meta::get_value( 'metadesc', get_option( 'page_for_posts' ) );
+				} elseif ( is_category() || is_tag() || is_tax() ) {
+					$term     = $wp_query->get_queried_object();
+					$metadesc = WPSEO_Taxonomy_Meta::get_term_meta( $term, $term->taxonomy, 'desc' );
+					if ( ( ! is_string( $metadesc ) || $metadesc === '' ) && ( ( is_object( $term ) && isset( $term->taxonomy ) ) ) ) {
+						$metadesc = $this->meta_desc_from_template( 'metadesc-tax-' . $term->taxonomy, $term );
+					}
+				} elseif ( is_author() ) {
+					$author_id = get_query_var( 'author' );
+					$metadesc  = get_the_author_meta( 'wpseo_metadesc', $author_id );
+					if ( ( ! is_string( $metadesc ) || $metadesc === '' ) ) {
+						$metadesc = $this->meta_desc_from_template( 'metadesc-author-wpseo' );
+					}
+				} elseif ( is_post_type_archive() ) {
+					$post_type = get_query_var( 'post_type' );
+					if ( is_array( $post_type ) ) {
+						$post_type = reset( $post_type );
+					}
+					$metadesc = $this->meta_desc_from_template( 'metadesc-ptarchive-' . $post_type );
+				} elseif ( is_archive() ) {
+					$metadesc = $this->meta_desc_from_template( 'metadesc-archive-wpseo' );
+				}
+
+			}
+
+			return $metadesc;
+		}
+
+		/**
+		 * Gets the appropriate meta description template and replaces the vars in it, returning a meta description.
+		 *
+		 * @param string $template
+		 * @param object $term
+		 *
+		 * @return bool|string
+		 */
+		public function meta_desc_from_template( $template, $term = null ) {
+			$metadesc = '';
+
+			if ( $term == null ) {
+				global $wp_query;
+				$term = $wp_query->get_queried_object();
+			}
+			if ( isset( $this->options[ $template ] ) ) {
+				$metadesc = wpseo_replace_vars( $this->options[ $template ], $term );
+			}
+
+			// If we're on a paginated page, and the template doesn't change for paginated pages, bail.
+			if ( ( ! is_string( $metadesc ) || $metadesc === '' ) && get_query_var( 'paged' ) && get_query_var( 'paged' ) > 1 && $template !== '' ) {
+				if ( strpos( $template, '%%page' ) === false ) {
+					return false;
+				}
+			}
+
+			return $metadesc;
 		}
 
 		/**
