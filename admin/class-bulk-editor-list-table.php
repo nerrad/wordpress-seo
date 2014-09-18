@@ -16,13 +16,17 @@ if ( ! class_exists( 'WPSEO_Bulk_List_Table' ) ) {
 	 */
 	class WPSEO_Bulk_List_Table extends WP_List_Table {
 
-		/*
+		/**
 		 * Array of post types for which the current user has `edit_others_posts` capabilities.
+		 *
+		 * @var array
 		 */
 		private $all_posts;
 
-		/*
+		/**
 		 * Array of post types for which the current user has `edit_posts` capabilities, but not `edit_others_posts`.
+		 *
+		 * @var array
 		 */
 		private $own_posts;
 
@@ -85,14 +89,75 @@ if ( ! class_exists( 'WPSEO_Bulk_List_Table' ) ) {
 
 		/**
 		 * The settings which will be used in the __construct.
-		 * @var
+		 * @var array
 		 */
 		protected $settings;
 
 		/**
+		 * The meta type which will be used in get_meta_data
+		 * @var string
+		 */
+		protected $meta_type;
+
+		/**
+		 * The columns shown on the table
+		 *
+		 * @return array
+		 */
+		public function get_columns() {
+			return $columns = array(
+				'col_page_title'  => __( 'WP Page Title', 'wordpress-seo' ),
+				'col_post_type'   => __( 'Post Type', 'wordpress-seo' ),
+				'col_post_status' => __( 'Post Status', 'wordpress-seo' ),
+				'col_post_date'   => __( 'Publication date', 'wordpress-seo' ),
+				'col_page_slug'   => __( 'Page URL/Slug', 'wordpress-seo' ),
+				'col_row_action'  => __( 'Action', 'wordpress-seo' ),
+			);
+		}
+
+		/**
+		 * Method for setting the meta data, which belongs to the records that will be shown on the current page
+		 *
+		 * This method will loop through the current items ($this->items) for getting the post_id. With this data
+		 * ($needed_ids) the method will query the meta-data table for getting the metadescription.
+		 *
+		 */
+		function get_meta_data() {
+
+			global $wpdb;
+
+			$needed_ids = array();
+			foreach ( $this->items AS $item ) {
+				$needed_ids[] = $item->ID;
+			}
+
+			$post_ids  = "'" . implode( "', '", $needed_ids ) . "'";
+			$meta_data = $wpdb->get_results(
+				"
+				 	SELECT *
+				 	FROM {$wpdb->postmeta}
+				 	WHERE post_id IN({$post_ids}) && meta_key = '" . WPSEO_Meta::$meta_prefix . $this->meta_type . "'
+				"
+			);
+
+			foreach ( $meta_data AS $row ) {
+				$this->meta_data[ $row->post_id ][ $row->meta_key ] = $row->meta_value;
+			}
+
+			// Little housekeeping
+			unset( $needed_ids, $post_ids, $meta_data );
+
+		}
+		/**
 		 * Class constructor
 		 */
 		function __construct() {
+			$this->settings = array(
+				'singular' => 'wpseo_bulk_' . $this->page_type,
+				'plural'   => 'wpseo_bulk_' . $this->page_type . 's',
+				'ajax'     => true,
+			);
+
 			parent::__construct( $this->settings );
 
 			$this->request_url    = $_SERVER['REQUEST_URI'];
@@ -148,7 +213,7 @@ if ( ! class_exists( 'WPSEO_Bulk_List_Table' ) ) {
 			?>
 			<div class="tablenav <?php echo esc_attr( $which ); ?>">
 
-				<?php if ( 'top' === $which ) { ?>
+				<?php if ('top' === $which) { ?>
 				<form id="posts-filter" action="" method="get">
 					<input type="hidden" name="page" value="wpseo_bulk-editor" />
 					<input type="hidden" name="type" value="<?php echo $this->page_type; ?>" />
@@ -166,7 +231,7 @@ if ( ! class_exists( 'WPSEO_Bulk_List_Table' ) ) {
 					?>
 
 					<br class="clear" />
-					<?php if ( 'top' === $which ) { ?>
+					<?php if ('top' === $which) { ?>
 				</form>
 			<?php } ?>
 			</div>
@@ -255,7 +320,7 @@ if ( ! class_exists( 'WPSEO_Bulk_List_Table' ) ) {
 						$class = ' class="current"';
 					}
 
-					$status_links[$status_name] = '<a href="' . esc_url( add_query_arg( array( 'post_status' => $status_name ), admin_url( 'admin.php?page=wpseo_bulk-editor' . $this->page_url ) ) ) . '"' . $class . '>' . sprintf( translate_nooped_plural( $status->label_count, $total ), number_format_i18n( $total ) ) . '</a>';
+					$status_links[ $status_name ] = '<a href="' . esc_url( add_query_arg( array( 'post_status' => $status_name ), admin_url( 'admin.php?page=wpseo_bulk-editor' . $this->page_url ) ) ) . '"' . $class . '>' . sprintf( translate_nooped_plural( $status->label_count, $total ), number_format_i18n( $total ) ) . '</a>';
 				}
 			}
 			unset( $post_stati, $status, $status_name, $total, $class );
@@ -492,7 +557,7 @@ if ( ! class_exists( 'WPSEO_Bulk_List_Table' ) ) {
 				foreach ( $records as $rec ) {
 
 					// Fill meta data if exists in $this->meta_data
-					$meta_data = ( ! empty( $this->meta_data[$rec->ID] ) ) ? $this->meta_data[$rec->ID] : array();
+					$meta_data = ( ! empty( $this->meta_data[ $rec->ID ] ) ) ? $this->meta_data[ $rec->ID ] : array();
 
 					echo '<tr id="record_' . $rec->ID . '">';
 
@@ -556,7 +621,7 @@ if ( ! class_exists( 'WPSEO_Bulk_List_Table' ) ) {
 								break;
 
 							case 'col_existing_yoast_seo_title':
-								$cell_value = ( ( ! empty( $meta_data[WPSEO_Meta::$meta_prefix . 'title'] ) ) ? $meta_data[WPSEO_Meta::$meta_prefix . 'title'] : '' );
+								$cell_value = ( ( ! empty( $meta_data[ WPSEO_Meta::$meta_prefix . 'title' ] ) ) ? $meta_data[ WPSEO_Meta::$meta_prefix . 'title' ] : '' );
 								echo sprintf( '<td %2$s id="wpseo-existing-title-%3$s">%1$s</td>', $cell_value, $attributes, $rec->ID );
 								break;
 
@@ -572,7 +637,7 @@ if ( ! class_exists( 'WPSEO_Bulk_List_Table' ) ) {
 
 
 							case 'col_existing_yoast_seo_metadesc':
-								$cell_value = ( ( ! empty( $meta_data[WPSEO_Meta::$meta_prefix . 'metadesc'] ) ) ? $meta_data[WPSEO_Meta::$meta_prefix . 'metadesc'] : '' );
+								$cell_value = ( ( ! empty( $meta_data[ WPSEO_Meta::$meta_prefix . 'metadesc' ] ) ) ? $meta_data[ WPSEO_Meta::$meta_prefix . 'metadesc' ] : '' );
 								echo sprintf( '<td %2$s id="wpseo-existing-metadesc-%3$s">%1$s</td>', $cell_value, $attributes, $rec->ID );
 								break;
 
