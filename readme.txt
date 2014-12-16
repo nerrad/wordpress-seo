@@ -116,6 +116,19 @@ You'll find the [FAQ on Yoast.com](https://yoast.com/wordpress/plugins/seo/faq/)
 
 == Changelog ==
 
+= 1.7.2 =
+
+* Enhancements:
+	* Delay flushing the rewrite rules until shutdown.
+
+* Bugfixes:
+	* Fix undefined index notice, which was causing an error when using Advanced Custom Fields - props [mikeaag](https://github.com/mikeaag)
+    * Removed 'NextScripts: Social Networks Auto-Poster' from the conflicts list.
+    * Fill the preview with the correct value when excerpt is filled and long content is empty, take the excerpt.
+	* Introduce new `base_url` function for relative canonicals.
+
+* For developers: Implemented Grunt task for GlotPress.
+
 = 1.7.1 =
 
 * Security fix: fixed possible cross scripting issue with encoded entities in a post title. This could potentially allow an author on your site to execute JavaScript when you visit that posts edit page, allowing them to do rights expansion or otherwise. Thanks to [Joe Hoyle](http://www.joehoyle.co.uk/) for responsibly disclosing this issue.
@@ -147,7 +160,7 @@ You'll find the [FAQ on Yoast.com](https://yoast.com/wordpress/plugins/seo/faq/)
 	* Fixes a bug where the wrong image was being displayed in twitter cards.
 	* Fixes a bug where facebook would display the wrong image.
 	* Fixes a bug where last modified in sitemap was broken.
-	* Fixes a bug wher SEO-score heading made the table row jump on hover because there wasn't enough place left for the down arrow.
+	* Fixes a bug where SEO-score heading made the table row jump on hover because there wasn't enough place left for the down arrow.
 	* Removed a couple of languages that were not up to date.
 
 = 1.6.3 =
