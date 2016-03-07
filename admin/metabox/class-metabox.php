@@ -807,10 +807,6 @@ SVG;
 	 * Keyword tab for enabling analysis of multiple keywords.
 	 */
 	public function template_keyword_tab() {
-		// Only do this on the edit post pages.
-		if ( 'post' !== get_current_screen()->base && 'post-new' !== get_current_screen()->base ) {
-			return;
-		}
 
 		echo '<script type="text/html" id="tmpl-keyword_tab">
 				<li class="wpseo_keyword_tab<# if ( data.active ) { #> active<# } #>">
